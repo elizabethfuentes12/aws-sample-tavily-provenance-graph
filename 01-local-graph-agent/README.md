@@ -1,0 +1,104 @@
+# A Research Agent That Remembers What It Read on the Web
+
+**Problem:** A research agent with web search answers well, once. Ask a related question in a new conversation and it searches again: every page it read is gone.
+
+**Solution:** Give the agent a Neo4j knowledge graph as its memory, using only the [Strands Agents](https://strandsagents.com/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) harness. Strands' `MemoryManager` injects stored facts before each model call, its `ModelExtractor` turns each answer into facts with a source URL, and a custom `MemoryStore` writes them to Neo4j. Tavily comes in as two `@tool` functions, `search_web` and `read_web_page`, whose descriptions tell the model when to use them and when not. Everything runs locally.
+
+---
+
+## How the agent is built
+
+```python
+web_tools = [search_web, read_web_page]          # @tool functions on Tavily's search and extract APIs
+web_facts = WebFactsGraph(driver)                 # a Strands MemoryStore on Neo4j, and a hook
+
+researcher = Agent(
+    model=model,
+    system_prompt=SYSTEM_PROMPT,
+    tools=web_tools,
+    memory_manager=MemoryManager(stores=[web_facts], search_tool_config=RECALL_TOOL),   # tool: recall_web_facts
+    hooks=[web_facts],
+)
+researcher("Which companies make the batteries for the best-selling electric cars?")
+```
+
+| Harness piece | What it does here | Docs |
+|---|---|---|
+| `@tool` | `search_web` and `read_web_page`; the docstring is what the model reads to decide when to call each one | [custom tools](https://strandsagents.com/docs/user-guide/sdk/tools/custom-tools/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) |
+| `MemoryManager` | before each model call, searches the store with the user's message and injects the results; registers the search tool, renamed `recall_web_facts` with `MemoryToolConfig` | [memory](https://strandsagents.com/docs/user-guide/sdk/memory/managing-memory/?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) |
+| `ModelExtractor` | after each turn, the agent's own model extracts facts, each with subject, predicate, object and source URL as metadata | same page, "Automatic Extraction" |
+| `WebFactsGraph` | custom `MemoryStore` (`search`, `add`) on Neo4j, and a hook that records the URLs Tavily returned | same page, "Custom Stores" |
+
+### What happens on each turn
+
+![How the agent answers: look in the graph, search the web only if needed, save new facts](images/how-the-agent-works.png)
+
+1. **Look in the graph**: `MemoryManager` searches `web_facts` with the question (Neo4j full-text match plus the facts one entity away) and injects the top 5 into the prompt.
+2. **Search the web** with `search_web` only if those facts, `recall_web_facts` and the conversation are not enough.
+3. **Save new facts**: the `ModelExtractor` turns the answer into facts, and `web_facts.add()` writes the ones whose URL a web tool returned.
+
+That is why session 1 always calls Tavily (the graph starts empty) and the new agent in session 2 can answer from the graph.
+
+### The graph
+
+```
+(:WebFact {statement, predicate})-[:SUBJECT]->(:WebEntity)     (:WebFact)-[:OBJECT]->(:WebEntity)     (:WebFact)-[:FROM]->(:WebSource {url})
+```
+
+Two facts that mention the same entity share its node, so `search` returns the facts that match the question plus the facts one entity away. Two deterministic rules in `add()`: an entity is a name, not a number; and a fact whose URL no web tool returned in this process is dropped, so a citation the model invented never reaches the graph.
+
+## What the notebook shows
+
+| Step | Agent | Expected |
+|---|---|---|
+| Session 1 | `researcher`, empty graph, three questions about EV batteries, factories and lithium | it searches; the extractor saves facts |
+| What the agent stored | `web_facts.facts()` | subject, predicate, object and source of each fact |
+| Session 2 | `new_session`, a new `Agent` with no history, same graph | answers a rephrased question and a combined one from the graph |
+| Without the graph | `no_memory`, Tavily only | searches again for the same question |
+
+One run on 2026-11-17 (gpt-4o-mini): session 1 made 3 Tavily searches and stored 8 facts from 2 sources; session 2 answered both questions with no web search; the agent without the graph made 2 searches. A second run, against Neo4j AuraDB: session 1 made 3 searches and stored 14 facts from 4 sources; in session 2 the Tesla question needed no search and the factories-and-lithium question made 1; the agent without the graph made 1. These counts are model behavior and change between runs.
+
+## Quick Start
+
+```bash
+# Neo4j: AuraDB (paste the credentials file values into .env), or a local instance:
+../scripts/setup_local_neo4j.sh          # optional: own Neo4j on bolt 7699 / http 7499, never touches 7474/7687
+uv venv && uv pip install -r requirements.txt
+cp .env.example .env                     # Neo4j only (AuraDB block active, local block commented); keys come from your shell
+uv run jupyter lab test_local_graph_agent.ipynb     # or: uv run python test_local_graph_agent.py
+uv run pytest                            # 8 deterministic tests of the store (Neo4j only)
+```
+
+**AI Model Provider:** OpenAI (`gpt-4o-mini`) locally. The notebook keeps the Amazon Bedrock line commented: that is the model the same agent uses on AgentCore (Demo 02). Any Strands model provider works.
+
+## Files
+
+| File | Purpose |
+|------|---------|
+| `test_local_graph_agent.ipynb` | The walkthrough: model, Tavily MCP, store, agent, two sessions, the agent without memory |
+| `test_local_graph_agent.py` | The same code cells as a script |
+| `images/how-the-agent-works.png` | The per-turn diagram (source: `how-the-agent-works.d2`) |
+| `web_facts_store.py` | `WebFactsGraph`: Strands `MemoryStore` + hook on Neo4j, extraction prompt, Browser queries |
+| `tests/test_web_facts_store.py` | Deterministic tests: URL check, name check, merging, recall with neighbors |
+
+## Honest limits
+
+- The extractor only sees text, not tool results. If the model answers without citing full URLs, its facts are dropped (no source URL, no fact). In the run above, the factory question stored nothing for that reason.
+- Recall is a Neo4j full-text match on the question's words plus one hop. Entity resolution ("Tesla" vs "Tesla Inc.") is a lowercase match only.
+- The URL check proves a web tool returned the URL, not that the page supports the sentence. That needs a judge step.
+- Not `strands_tools.tavily`: deprecated in favor of Tavily's MCP server.
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| `Tavily key: False` | Export `TAVILY_API_KEY` or `TAVILY_KEY`. `.env` never overrides your shell. |
+| `SSLCertVerificationError ... self-signed certificate in certificate chain` with AuraDB on macOS | `/etc/ssl/cert.pem` lacks AuraDB's root CA (SSL.com TLS RSA Root CA 2022). The notebook's first cell sets `SSL_CERT_FILE` to `certifi`'s bundle; keep that line. Verification stays on. |
+| `ServiceUnavailable` | Neo4j is not running: `../scripts/setup_local_neo4j.sh status`. |
+| Session 2 still searches | The question's words did not match stored facts; look at `web_facts.facts()` and in Neo4j Browser. |
+
+**Tested versions:** Strands 1.65.0, `neo4j` driver 6.4.1, Neo4j Community 2026.03.1 and Neo4j AuraDB 5.27, Tavily remote MCP.
+
+## Next Steps
+
+[Demo 02: AgentCore Runtime V2](../02-agentcore-runtime-v2/): the same agent with Bedrock, AgentCore Gateway and AuraDB.

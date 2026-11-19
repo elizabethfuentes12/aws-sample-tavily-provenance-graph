@@ -1,0 +1,23 @@
+# How the agent answers: graph first, web only if needed. Kept short on purpose (notebook + README).
+# Render: d2 --pad 30 how-the-agent-works.d2 how-the-agent-works.svg && rsvg-convert -w 1400 how-the-agent-works.svg -o how-the-agent-works.png
+direction: right
+classes: {
+  box:  { style: { fill: "#F5F3EF"; stroke: "#000000"; font-size: 26; border-radius: 10; stroke-width: 2 } }
+  web:  { style: { fill: "#FFE4D1"; stroke: "#FF6200"; font-size: 26; border-radius: 10; stroke-width: 3 } }
+  ans:  { style: { fill: "#FF6200"; stroke: "#000000"; font-size: 26; border-radius: 10; bold: true } }
+}
+q: "Question" { class: box }
+look: "1 · Look in\nthe graph" { class: box }
+found: "Facts\nfound?" { shape: diamond; style: { fill: "#F3C300"; font-size: 24 } }
+web: "2 · Search\nthe web" { class: web }
+answer: "Answer" { class: ans }
+save: "3 · Save new\nfacts" { class: box }
+graph: "Neo4j\ngraph" { shape: cylinder; style: { fill: "#E8F1FF"; stroke: "#0578FF"; stroke-width: 3; font-size: 26 } }
+
+q -> look -> found
+found -> answer: "yes" { style.font-size: 24 }
+found -> web: "no" { style.font-size: 24 }
+web -> answer
+answer -> save
+look <- graph: "" { style.stroke: "#0578FF" }
+save -> graph { style.stroke: "#0578FF" }

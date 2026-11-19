@@ -1,0 +1,5 @@
+# Client side only (invoke_agent.py and tests). The agent's own dependencies are in agent/requirements.txt.
+boto3>=1.43.95   # first release with platformVersion in CreateAgentRuntime (notebooks and tests)
+python-dotenv>=1.0.0
+pytest>=8.0.0
+nbformat>=5.10.0

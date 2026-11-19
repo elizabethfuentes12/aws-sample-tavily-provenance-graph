@@ -1,0 +1,192 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Tavily web tools for the research agent",
+    "version": "1.0.0",
+    "description": "Tavily's /search and /extract APIs as two agent tools, search_web and read_web_page, on AgentCore Gateway (OpenAPI target, API key in AgentCore Identity). Same server and auth as the 'Tavily Search' integration template (https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway-target-integrations.html), but we own the operation names, descriptions and parameters because the model reads them on every call. They match the @tool definitions in ../01-local-graph-agent (tests/test_static.py checks it). Gateway rules: no securitySchemes, no oneOf/anyOf/allOf."
+  },
+  "servers": [
+    {
+      "url": "https://api.tavily.com"
+    }
+  ],
+  "paths": {
+    "/search": {
+      "post": {
+        "operationId": "search_web",
+        "summary": "Search the live web and return short excerpts with their source URLs.",
+        "description": "Search the live web and return short excerpts with their source URLs. Use it for any fact about companies, products, places, figures or events that neither this conversation nor recall_web_facts already holds, and for anything recent. Never answer such facts from your own knowledge. Do not use it to look up what was said earlier in this conversation, or to re-check or add sources to facts that recall_web_facts already returned. Returns JSON with `results`, a list of {title, url, content, score}; `content` is a short excerpt, so cite the `url` next to each fact taken from it. An empty list means nothing relevant was found; try other keywords once.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "query"
+                ],
+                "properties": {
+                  "query": {
+                    "description": "Keywords with the names involved, not a full question. Example: \"CATL battery plant Hungary\".",
+                    "type": "string"
+                  },
+                  "max_results": {
+                    "default": 5,
+                    "description": "Results to return, 1 to 10. Default 5.",
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10
+                  },
+                  "search_depth": {
+                    "default": "basic",
+                    "description": "\"basic\" is faster; use \"advanced\" only when basic excerpts are too short to answer.",
+                    "enum": [
+                      "basic",
+                      "advanced"
+                    ],
+                    "type": "string"
+                  },
+                  "topic": {
+                    "default": "general",
+                    "description": "\"news\" for recent events, \"finance\" for markets and company financials, \"general\" otherwise.",
+                    "enum": [
+                      "general",
+                      "news",
+                      "finance"
+                    ],
+                    "type": "string"
+                  },
+                  "time_range": {
+                    "description": "Only results published in this window. Omit unless the user asks for recent information.",
+                    "enum": [
+                      "day",
+                      "week",
+                      "month",
+                      "year"
+                    ],
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "query": {
+                      "type": "string"
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "title": {
+                            "type": "string"
+                          },
+                          "url": {
+                            "type": "string"
+                          },
+                          "content": {
+                            "type": "string"
+                          },
+                          "score": {
+                            "type": "number"
+                          },
+                          "published_date": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "response_time": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/extract": {
+      "post": {
+        "operationId": "read_web_page",
+        "summary": "Read the full text of one or more web pages.",
+        "description": "Read the full text of one or more web pages. Use it when a search excerpt is too short to confirm a fact, or when the user gives a URL to read. Do not use it on pages that neither a search returned nor the user gave. Returns JSON with `results`, a list of {url, raw_content}, and `failed_results` for pages that could not be read. Pages can be long, so read at most 3.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "urls"
+                ],
+                "properties": {
+                  "urls": {
+                    "description": "Full URLs (https://...) to read, at most 3.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array",
+                    "maxItems": 3
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Extracted content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "raw_content": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "failed_results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "error": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

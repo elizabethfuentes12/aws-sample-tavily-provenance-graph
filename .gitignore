@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.venv-*/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Scratch/throwaway scripts (agent-generated helpers)
+_*.py
+!__init__.py
+
+# AgentCore code package (02-agentcore-runtime-v2/build_package.sh)
+build/
+*.zip
+
+# CDK
+cdk.out/
+cdk-outputs.json
+*.d.ts
+node_modules/
+
+# Jupyter
+.ipynb_checkpoints/
+*_executed.ipynb
+
+# Local Neo4j data (docker compose volumes)
+neo4j-data/
+
+# IDE / OS
+.idea/
+.vscode/
+.kiro/
+*.swp
+.DS_Store
+
+# Credentials
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Claude Code local config
+.claude/

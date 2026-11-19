@@ -1,0 +1,4 @@
+# 2.273.0 is the first aws-cdk-lib with Runtime platform_version (V2) that still emits cloud-assembly
+# schema 54, which CDK CLI 2.1126.0 reads. 2.274.0+ need a CDK CLI >= 2.1148.2.
+aws-cdk-lib==2.273.0
+constructs>=10.0.0
