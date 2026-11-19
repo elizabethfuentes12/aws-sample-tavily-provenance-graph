@@ -1,0 +1,23 @@
+# One turn of the research agent: memory first, the web only for what is missing, then save what it read.
+# Render: d2 --pad 30 research-agent-graph-memory-turn-flow.d2 research-agent-graph-memory-turn-flow.svg && rsvg-convert -w 1600 research-agent-graph-memory-turn-flow.svg -o research-agent-graph-memory-turn-flow.png
+direction: right
+classes: {
+  box:  { style: { fill: "#F5F3EF"; stroke: "#000000"; font-size: 24; border-radius: 10; stroke-width: 2 } }
+  web:  { style: { fill: "#FFE4D1"; stroke: "#FF6200"; font-size: 24; border-radius: 10; stroke-width: 3 } }
+  ans:  { style: { fill: "#FF6200"; stroke: "#000000"; font-size: 24; border-radius: 10; bold: true } }
+}
+q: "Question" { class: box }
+recall: "1 · Recall\nrecall_web_facts\n+ facts injected\nbefore the model" { class: box }
+enough: "Enough\nfacts?" { shape: diamond; style: { fill: "#F3C300"; font-size: 22 } }
+web: "2 · Search the web\nsearch_web\nread_web_page" { class: web }
+answer: "Answer\nwith source URLs" { class: ans }
+save: "3 · Save\nfacts + source URL\n(only URLs a web\ntool returned)" { class: box }
+graph: "Knowledge\ngraph" { shape: cylinder; style: { fill: "#E8F1FF"; stroke: "#0578FF"; stroke-width: 3; font-size: 24 } }
+
+q -> recall -> enough
+enough -> answer: "yes" { style.font-size: 22 }
+enough -> web: "no" { style.font-size: 22 }
+web -> answer
+answer -> save
+graph -> recall { style.stroke: "#0578FF"; style.stroke-width: 2 }
+save -> graph { style.stroke: "#0578FF"; style.stroke-width: 2 }

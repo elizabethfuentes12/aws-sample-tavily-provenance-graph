@@ -86,7 +86,7 @@ uv run pytest                            # 8 deterministic tests of the store (N
 - The extractor only sees text, not tool results. If the model answers without citing full URLs, its facts are dropped (no source URL, no fact). In the run above, the factory question stored nothing for that reason.
 - Recall is a Neo4j full-text match on the question's words plus one hop. Entity resolution ("Tesla" vs "Tesla Inc.") is a lowercase match only.
 - The URL check proves a web tool returned the URL, not that the page supports the sentence. That needs a judge step.
-- Not `strands_tools.tavily`: deprecated in favor of Tavily's MCP server.
+- Not `strands_tools.tavily` (deprecated) and not Tavily's MCP server: its tool descriptions tell the model to search before any factual answer, and Strands cannot change an MCP server's descriptions. The two `@tool` functions own that text.
 
 ## Troubleshooting
 

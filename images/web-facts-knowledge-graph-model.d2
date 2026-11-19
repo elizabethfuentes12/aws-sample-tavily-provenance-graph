@@ -1,0 +1,23 @@
+# How a fact is stored: one sentence that links two named entities and points to the page it came from.
+# Two facts that share an entity share its node; that shared node is the hop for multi-hop questions.
+# Render: d2 --pad 30 web-facts-knowledge-graph-model.d2 web-facts-knowledge-graph-model.svg && rsvg-convert -w 1600 web-facts-knowledge-graph-model.svg -o web-facts-knowledge-graph-model.png
+direction: down
+classes: {
+  fact:   { style: { fill: "#FFE4D1"; stroke: "#FF6200"; stroke-width: 3; font-size: 22; border-radius: 10 } }
+  entity: { shape: circle; style: { fill: "#E8F1FF"; stroke: "#0578FF"; stroke-width: 3; font-size: 24; bold: true } }
+  source: { shape: page; style: { fill: "#F5F3EF"; stroke: "#000000"; stroke-width: 2; font-size: 20 } }
+}
+s1: "source page\n(news article)" { class: source }
+s2: "source page\n(encyclopedia)" { class: source }
+panasonic: "Panasonic" { class: entity; width: 200; height: 200 }
+tesla: "Tesla" { class: entity; width: 200; height: 200 }
+nevada: "Nevada" { class: entity; width: 200; height: 200 }
+f1: "Fact\n\"Panasonic supplies\nbatteries to Tesla\"" { class: fact }
+f2: "Fact\n\"Tesla runs its\nGigafactory in Nevada\"" { class: fact }
+
+f1 -> panasonic: "SUBJECT" { style.font-size: 18 }
+f1 -> tesla: "OBJECT" { style.font-size: 18 }
+f2 -> tesla: "SUBJECT" { style.font-size: 18 }
+f2 -> nevada: "OBJECT" { style.font-size: 18 }
+s1 -> f1: "FROM" { style.font-size: 18; source-arrowhead.shape: triangle; target-arrowhead.shape: none }
+s2 -> f2: "FROM" { style.font-size: 18; source-arrowhead.shape: triangle; target-arrowhead.shape: none }
