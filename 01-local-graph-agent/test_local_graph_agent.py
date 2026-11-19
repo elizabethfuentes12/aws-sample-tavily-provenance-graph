@@ -135,6 +135,10 @@ print(web_facts.stats())
 for fact in web_facts.facts():
     print(f"{fact['subject']} -[{fact['predicate']}]-> {fact['object']}   {fact['source']}")
 
+print(f"\nrefused: {len(web_facts.dropped)}")
+for drop in web_facts.dropped:
+    print(f"  {drop['reason']}: {drop['fact'][:90]}")
+
 import asyncio
 
 for entry in asyncio.run(web_facts.search("Who supplies the batteries in Tesla cars?")):

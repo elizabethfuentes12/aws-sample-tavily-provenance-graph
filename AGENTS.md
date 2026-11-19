@@ -124,6 +124,7 @@ Demo 02 `.env`: `AWS_REGION`, `AGENT_RUNTIME_ARN`. CDK path secrets (`cdk/deploy
   questions 1-3 recall + search, follow-up "which are South Korean?" no tools, "what was my first question?" no tools;
   session B Tesla answered from `recall_web_facts` only, follow-up "which is Japanese?" no tools.
 - 27 tests pass (8 store, 19 Demo 02).
+- `WebFactsGraph.dropped` keeps refused facts with the reason; the notebook prints them under "What the agent stored". Added after an empty graph in Kiro: an old kernel had the previous store (tavily_* tool names), so every fact was refused silently. Restart the kernel after pulling.
 - Root README rewritten 2026-11-19 with three diagrams in `images/` (turn flow and graph model in D2, AWS architecture in draw.io with AWS4 icons); nothing account-specific in it.
 - No credential values in the repo, not even fake ones (GitGuardian flagged fake Neo4j test values on 2026-11-19): offline
   tests take TAVILY_API_KEY / NEO4J_* from the environment or generate random ones (`offline_credentials()` in

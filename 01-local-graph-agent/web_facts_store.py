@@ -105,6 +105,7 @@ class WebFactsGraph(HookProvider):
             "extractor": ModelExtractor(model=extraction_model, system_prompt=EXTRACTION_PROMPT),
         }
         self._seen_urls: OrderedDict[str, None] = OrderedDict()   # bounded: the last 5000 URLs
+        self.dropped: list[dict] = []   # facts add() refused, with the reason; shown in the demo so a drop is never silent
         self._init_schema()
 
     # ── Neo4j plumbing ───────────────────────────────────────────────────────
@@ -142,14 +143,11 @@ class WebFactsGraph(HookProvider):
         subject, predicate, obj = (str(meta.get(k, "")).strip() for k in ("subject", "predicate", "object"))
         url = str(meta.get("source_url", "")).strip()
         if url not in self._seen_urls:
-            log.info("web_facts: dropped a fact whose source no web tool returned (%s): %s", url or "none", content[:80])
-            return None
+            return self._drop(f"source not returned by a web tool ({url or 'no URL'})", content)
         if not (subject and predicate and obj):
-            log.info("web_facts: dropped a fact without subject/predicate/object: %s", content[:80])
-            return None
+            return self._drop("missing subject, predicate or object", content)
         if not (is_name(subject) and is_name(obj)):
-            log.info("web_facts: dropped a fact whose subject or object is a number, not a name: %s", content[:80])
-            return None
+            return self._drop("subject or object is a number, not a name", content)
         key = f"{entity_key(subject)}|{predicate_key(predicate)}|{entity_key(obj)}"
         # MERGE on the triple: extraction is at-least-once and later turns restate known facts.
         self._run(
@@ -168,6 +166,12 @@ class WebFactsGraph(HookProvider):
             at=datetime.now(timezone.utc).isoformat(),
         )
         return {"kind": "fact", "key": key}
+
+    def _drop(self, reason: str, content: str) -> None:
+        log.info("web_facts: dropped a fact (%s): %s", reason, content[:80])
+        self.dropped.append({"reason": reason, "fact": content.strip()})
+        del self.dropped[:-200]
+        return None
 
     # ── MemoryStore: recall ──────────────────────────────────────────────────
     async def search(self, query: str, options: SearchOptions | None = None) -> list[MemoryEntry]:

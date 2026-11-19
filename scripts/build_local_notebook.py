@@ -218,11 +218,21 @@ works; session 2 does, with a new agent.
 code('researcher("Which companies make the batteries for the best-selling electric cars?")')
 code('researcher("Where are the largest EV battery factories, and which companies run them?")')
 code('researcher("Which countries mine and refine most of the lithium used in EV batteries?")')
-md("### What the agent stored")
+md("""
+### What the agent stored, and what it refused
+
+The store keeps a fact only if a web tool returned its source URL and both ends are names. Refused facts are listed
+with the reason, so an empty graph always says why. If every fact says "source not returned by a web tool", restart
+the kernel: an old copy of `web_facts_store.py` is still loaded.
+""")
 code("""
 print(web_facts.stats())
 for fact in web_facts.facts():
     print(f"{fact['subject']} -[{fact['predicate']}]-> {fact['object']}   {fact['source']}")
+
+print(f"\\nrefused: {len(web_facts.dropped)}")
+for drop in web_facts.dropped:
+    print(f"  {drop['reason']}: {drop['fact'][:90]}")
 """)
 md("""
 ## What memory returns for a question
