@@ -139,7 +139,7 @@ def test_v2_startup_and_request_split():
 def test_all_deploy_paths_use_the_same_entrypoint_schema_and_build_script():
     entry = AGENT.name
     assert entry == "research_agent.py" and not (ROOT / "agent" / "main.py").exists()
-    assert f'entrypoint=[ENTRYPOINT]' in (ROOT / "cdk" / "stack_constructs" / "graph_agent_runtime.py").read_text()
+    assert 'entrypoint=RUN_WITH + [ENTRYPOINT]' in (ROOT / "cdk" / "stack_constructs" / "graph_agent_runtime.py").read_text()
     assert f'ENTRYPOINT = "{entry}"' in (ROOT / "cdk" / "stack_constructs" / "graph_agent_runtime.py").read_text()
     assert f'ENTRYPOINT = "{entry}"' in _source("deploy_with_boto3.ipynb")
     assert f"ENTRYPOINT={entry}" in _source("deploy_with_cli.ipynb")
@@ -150,3 +150,15 @@ def test_all_deploy_paths_use_the_same_entrypoint_schema_and_build_script():
     assert not list(ROOT.glob("**/tavily-openapi.json")) or {p.relative_to(ROOT).as_posix() for p in ROOT.glob("**/tavily-openapi.json")
                                                              if "build" not in p.parts and "cdk.out" not in p.parts} == {"schemas/tavily-openapi.json"}
     assert (ROOT / "build_package.sh").exists() and not (ROOT / "cdk" / "build_package.sh").exists()
+
+
+def test_observability_is_on_in_every_deploy_path():
+    """AgentCore Observability needs ADOT in the package and the agent started by opentelemetry-instrument
+    (https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-get-started-code-deploy-python.html)."""
+    requirements = (ROOT / "agent" / "requirements.txt").read_text()
+    assert re.search(r"^aws-opentelemetry-distro>=0\.18", requirements, re.M), "ADOT >= 0.18.0 missing"
+    assert "strands-agents[otel]" in requirements
+    cdk = (ROOT / "cdk" / "stack_constructs" / "graph_agent_runtime.py").read_text()
+    assert 'RUN_WITH = ["opentelemetry-instrument"]' in cdk and "logs:PutResourcePolicy" in cdk
+    assert '"entryPoint": ["opentelemetry-instrument", ENTRYPOINT]' in _source("deploy_with_boto3.ipynb")
+    assert '"entryPoint": ["opentelemetry-instrument", "$ENTRYPOINT"]' in _source("deploy_with_cli.ipynb")

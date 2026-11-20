@@ -60,6 +60,10 @@ AgentCore documents Tavily as a [built-in integration template](https://docs.aws
 
 The operations in `schemas/tavily-openapi.json` are ours, not the template's. Gateway turns each `operationId` and `description` into the tool name and description the model reads on every call, so they follow tool-design practice: what the tool does, when to use it and when not, what each parameter means, what comes back. They are the same as the local notebook's `@tool` functions (`tests/test_static.py` checks names, descriptions and parameters). Gateway names them `tavily___search_web` and `tavily___read_web_page`. Only five search parameters are exposed, and no oneOf/anyOf or `securitySchemes`, as Gateway requires.
 
+### How do I see traces?
+
+The package includes the AWS Distro for OpenTelemetry (`aws-opentelemetry-distro>=0.18.0`, plus `strands-agents[otel]`), and every deploy path starts the agent with `entryPoint: ["opentelemetry-instrument", "research_agent.py"]`, as the [direct code deployment guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-get-started-code-deploy-python.html?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el) shows. Spans for the agent loop, each model call, `recall_web_facts`, the Gateway tools and the memory injection go to the `spans` stream of the runtime's log group and to the GenAI Observability dashboard in CloudWatch. One-time account setup: turn on [CloudWatch Transaction Search](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability-configure.html?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el).
+
 ### What changes for Runtime V2?
 
 V2 starts the agent from a snapshot taken after startup ([optimize for V2](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-v2-optimize.html?trk=87c4c426-cddf-4799-a299-273337552ad8&sc_channel=el)). `agent/research_agent.py` follows that guidance:

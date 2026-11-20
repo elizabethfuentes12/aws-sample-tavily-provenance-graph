@@ -17,6 +17,8 @@ from constructs import Construct
 # stack_constructs/ -> cdk/ -> 02-agentcore-runtime-v2/build/package (written by ../build_package.sh)
 PACKAGE_DIR = pathlib.Path(__file__).resolve().parents[2] / "build" / "package"
 ENTRYPOINT = "research_agent.py"
+# The docs' direct-code-deploy entryPoint for observability: ADOT wraps the agent process.
+RUN_WITH = ["opentelemetry-instrument"]
 
 
 class GraphAgentRuntime(Construct):
@@ -38,7 +40,7 @@ class GraphAgentRuntime(Construct):
             agent_runtime_artifact=agentcore.AgentRuntimeArtifact.from_code_asset(
                 path=str(PACKAGE_DIR),
                 runtime=agentcore.AgentCoreRuntime.PYTHON_3_12,
-                entrypoint=[ENTRYPOINT],
+                entrypoint=RUN_WITH + [ENTRYPOINT],
             ),
             platform_version=agentcore.PlatformVersion.V2,
             network_configuration=agentcore.RuntimeNetworkConfiguration.using_public_network(),
@@ -48,6 +50,13 @@ class GraphAgentRuntime(Construct):
                 "BEDROCK_MODEL_ID": model_id,
             },
         )
+
+        # Observability: AgentCore lets X-Ray deliver the agent's spans to its own log group (needs ADOT >= 0.18.0).
+        self.runtime.add_to_role_policy(iam.PolicyStatement(
+            sid="SpansToAgentLogGroup",
+            actions=["logs:PutResourcePolicy"],
+            resources=[f"arn:aws:logs:{stack.region}:{stack.account}:log-group:/aws/bedrock-agentcore/runtimes/*"],
+        ))
 
         # Least privilege for what research_agent.py calls.
         gateway.grant_invoke(self.runtime)

@@ -48,7 +48,7 @@ def test_boto3_calls_validate_and_follow_the_docs(monkeypatch, tmp_path):
     runtime = params["CreateAgentRuntime"]
     assert runtime["platformVersion"] == "V2"
     code = runtime["agentRuntimeArtifact"]["codeConfiguration"]
-    assert code["entryPoint"] == ["research_agent.py"] and code["runtime"] == "PYTHON_3_12"
+    assert code["entryPoint"] == ["opentelemetry-instrument", "research_agent.py"] and code["runtime"] == "PYTHON_3_12"
     assert runtime["networkConfiguration"] == {"networkMode": "PUBLIC"}
     assert {"TAVILY_GATEWAY_URL", "NEO4J_SECRET_ID", "BEDROCK_MODEL_ID"} <= set(runtime["environmentVariables"])
     gateway = params["CreateGateway"]
